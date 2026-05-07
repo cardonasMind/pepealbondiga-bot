@@ -1,0 +1,479 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>PepeAlbondiga v2.0</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    background: #0f1419; color: #e6e6e6;
+    min-height: 100vh; padding: 16px;
+  }
+  .container { max-width: 1300px; margin: 0 auto; }
+  header {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 16px 20px; background: #1a2027; border-radius: 12px;
+    margin-bottom: 16px; flex-wrap: wrap; gap: 12px;
+  }
+  h1 { font-size: 20px; font-weight: 600; }
+  .subtitle { font-size: 12px; color: #8a96a3; margin-top: 2px; }
+  .status { display: flex; align-items: center; gap: 8px; font-size: 14px; color: #8a96a3; }
+  .dot { width: 10px; height: 10px; border-radius: 50%; background: #4a5568; }
+  .dot.on { background: #48bb78; box-shadow: 0 0 8px #48bb78; }
+  .dot.off { background: #e53e3e; }
+  .dot.busy { background: #ffad47; box-shadow: 0 0 8px #ffad47; animation: pulse 1s infinite; }
+  @keyframes pulse { 50% { opacity: 0.5; } }
+
+  .tabs { display: flex; gap: 4px; background: #1a2027; padding: 4px; border-radius: 10px; margin-bottom: 16px; }
+  .tab {
+    flex: 1; padding: 10px 16px; text-align: center; cursor: pointer;
+    border-radius: 8px; font-size: 14px; font-weight: 500; color: #8a96a3;
+    transition: all 0.15s;
+  }
+  .tab:hover { background: #2d3748; color: #e6e6e6; }
+  .tab.active { background: #3182ce; color: white; }
+
+  .panel { display: none; }
+  .panel.active { display: block; }
+
+  .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+  @media (max-width: 900px) { .grid { grid-template-columns: 1fr; } }
+
+  .card {
+    background: #1a2027; border-radius: 12px; padding: 20px;
+    border: 1px solid #2d3748;
+  }
+  .card h2 {
+    font-size: 13px; text-transform: uppercase; letter-spacing: 1px;
+    color: #8a96a3; margin-bottom: 14px;
+  }
+
+  .stats { display: grid; grid-template-columns: repeat(2, 1fr); gap: 12px; }
+  .stat { background: #0f1419; padding: 12px; border-radius: 8px; }
+  .stat-label { font-size: 11px; color: #8a96a3; text-transform: uppercase; }
+  .stat-value { font-size: 18px; font-weight: 600; margin-top: 4px; word-break: break-all; }
+
+  .controls { display: flex; flex-direction: column; gap: 10px; }
+  .btn-row { display: grid; grid-template-columns: repeat(auto-fit, minmax(80px, 1fr)); gap: 8px; }
+
+  button {
+    background: #2d3748; color: #e6e6e6; border: none;
+    padding: 10px 14px; border-radius: 8px; cursor: pointer;
+    font-size: 14px; font-weight: 500; transition: background 0.15s;
+    font-family: inherit;
+  }
+  button:hover:not(:disabled) { background: #4a5568; }
+  button:disabled { opacity: 0.4; cursor: not-allowed; }
+  button.primary { background: #3182ce; color: white; }
+  button.primary:hover:not(:disabled) { background: #2c5282; }
+  button.danger { background: #c53030; color: white; }
+  button.danger:hover:not(:disabled) { background: #9b2c2c; }
+  button.success { background: #38a169; color: white; }
+  button.success:hover:not(:disabled) { background: #2f855a; }
+
+  input[type=text], input[type=password], input[type=number], textarea {
+    background: #0f1419; color: #e6e6e6; border: 1px solid #2d3748;
+    padding: 10px; border-radius: 8px; font-size: 14px;
+    font-family: inherit; width: 100%;
+  }
+  input:focus, textarea:focus { outline: none; border-color: #3182ce; }
+  .input-row { display: flex; gap: 8px; }
+
+  textarea.code-editor {
+    font-family: 'Monaco', 'Menlo', 'Consolas', monospace;
+    font-size: 13px; min-height: 280px;
+    line-height: 1.5; resize: vertical;
+    background: #0a0e13;
+  }
+
+  .log {
+    background: #0a0e13; border: 1px solid #2d3748; border-radius: 8px;
+    padding: 12px; height: 350px; overflow-y: auto;
+    font-family: 'Monaco', 'Menlo', monospace; font-size: 12px;
+    line-height: 1.5;
+  }
+  .log-line { color: #8a96a3; padding: 2px 0; word-break: break-word; }
+  .log-line.chat { color: #e6e6e6; }
+  .log-line.auth { color: #48bb78; }
+  .log-line.error { color: #e53e3e; }
+  .log-line.cmd, .log-line.exec { color: #63b3ed; }
+  .log-line.skill { color: #a479e2; }
+  .log-line.path { color: #ffad47; }
+
+  .players { font-size: 13px; color: #cbd5e0; }
+  .players span { display: inline-block; background: #2d3748; padding: 4px 8px; border-radius: 4px; margin: 2px; }
+
+  .skills-grid {
+    display: grid; grid-template-columns: 280px 1fr; gap: 16px;
+  }
+  @media (max-width: 900px) { .skills-grid { grid-template-columns: 1fr; } }
+
+  .skill-list {
+    background: #1a2027; border-radius: 12px; padding: 12px;
+    border: 1px solid #2d3748; max-height: 600px; overflow-y: auto;
+  }
+  .skill-list h3 {
+    font-size: 11px; text-transform: uppercase; letter-spacing: 1px;
+    color: #8a96a3; margin: 8px 8px 12px; display: flex; justify-content: space-between;
+  }
+  .skill-item {
+    padding: 10px 12px; border-radius: 8px; cursor: pointer;
+    margin-bottom: 4px; transition: background 0.15s;
+  }
+  .skill-item:hover { background: #2d3748; }
+  .skill-item.active { background: #3182ce; color: white; }
+  .skill-name { font-size: 14px; font-weight: 500; }
+  .skill-desc { font-size: 11px; color: #8a96a3; margin-top: 2px; }
+  .skill-item.active .skill-desc { color: #cbd5e0; }
+  .skill-tags { font-size: 10px; color: #4a5568; margin-top: 4px; }
+  .skill-item.active .skill-tags { color: #a0aec0; }
+
+  .editor-area { display: flex; flex-direction: column; gap: 12px; }
+  .editor-toolbar { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+  .editor-meta {
+    display: grid; grid-template-columns: 1fr 2fr; gap: 8px; margin-bottom: 4px;
+  }
+
+  .footer {
+    text-align: center; color: #4a5568; font-size: 12px; padding: 20px;
+  }
+
+  .toast {
+    position: fixed; bottom: 20px; right: 20px;
+    background: #1a2027; border: 1px solid #2d3748; border-radius: 8px;
+    padding: 12px 16px; max-width: 400px;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.4);
+    transform: translateX(420px); transition: transform 0.3s;
+    z-index: 1000; font-size: 13px;
+  }
+  .toast.show { transform: translateX(0); }
+  .toast.success { border-left: 4px solid #48bb78; }
+  .toast.error { border-left: 4px solid #e53e3e; }
+
+  .token-prompt {
+    background: #1a2027; border: 1px solid #2d3748; border-radius: 12px;
+    padding: 24px; max-width: 500px; margin: 60px auto; text-align: center;
+  }
+  .token-prompt p { color: #8a96a3; margin: 12px 0; font-size: 13px; line-height: 1.6; }
+  .token-prompt input { margin: 16px 0; }
+</style>
+</head>
+<body>
+<div class="container">
+
+  <header>
+    <div>
+      <h1>PepeAlbondiga <span style="color: #8a96a3; font-size: 14px;">v2.0 Voyager-style</span></h1>
+      <div class="subtitle">Cuerpo en Minecraft + cerebro inyectable</div>
+    </div>
+    <div class="status">
+      <span class="dot" id="statusDot"></span>
+      <span id="statusText">Conectando...</span>
+    </div>
+  </header>
+
+  <div id="tokenPrompt" class="token-prompt" style="display: none;">
+    <h2 style="font-size: 18px;">Token de acceso</h2>
+    <p>Pega el token que apareció en la consola al arrancar el bot.<br>Es la línea: <code>Token de API: ...</code></p>
+    <input type="password" id="tokenInput" placeholder="Token...">
+    <button class="primary" onclick="saveToken()">Guardar y entrar</button>
+  </div>
+
+  <div id="mainContent" style="display: none;">
+
+    <div class="tabs">
+      <div class="tab active" data-tab="estado" onclick="switchTab('estado')">Estado</div>
+      <div class="tab" data-tab="skills" onclick="switchTab('skills')">Skills (Voyager)</div>
+      <div class="tab" data-tab="log" onclick="switchTab('log')">Log en vivo</div>
+    </div>
+
+    <div class="panel active" id="panel-estado">
+      <div class="grid">
+        <div class="card">
+          <h2>Estado del bot</h2>
+          <div class="stats">
+            <div class="stat"><div class="stat-label">Posicion</div><div class="stat-value" id="pos">--</div></div>
+            <div class="stat"><div class="stat-label">Vida / Hambre</div><div class="stat-value" id="health">--</div></div>
+            <div class="stat" style="grid-column: span 2;"><div class="stat-label">Jugadores en rango</div><div class="players" id="players">--</div></div>
+            <div class="stat" style="grid-column: span 2;"><div class="stat-label">Ejecucion en curso</div><div class="stat-value" id="execStatus">Idle</div></div>
+          </div>
+        </div>
+
+        <div class="card">
+          <h2>Controles rapidos</h2>
+          <div class="controls">
+            <div class="btn-row">
+              <button onclick="quickCmd('pos')">Posicion</button>
+              <button onclick="quickCmd('jump')">Saltar</button>
+              <button class="danger" onclick="quickCmd('stop')">Stop</button>
+            </div>
+            <div class="input-row">
+              <input type="text" id="chat" placeholder="Mensaje al chat publico..." onkeydown="if(event.key==='Enter')sayChat()">
+              <button class="primary" onclick="sayChat()">Enviar</button>
+            </div>
+            <div style="font-size: 12px; color: #8a96a3; margin-top: 8px;">
+              Para acciones complejas (talar arbol, construir, seguir) ve a la pestana <strong>Skills</strong>.
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="panel" id="panel-skills">
+      <div class="skills-grid">
+        <div class="skill-list">
+          <h3>
+            <span>Skills guardadas</span>
+            <button onclick="reloadSkills()" style="padding: 2px 8px; font-size: 11px;">↻</button>
+          </h3>
+          <div id="skillItems">Cargando...</div>
+        </div>
+
+        <div class="card">
+          <h2 id="editorTitle">Cuadro de codigo</h2>
+          <div class="editor-area">
+            <div class="editor-meta">
+              <input type="text" id="skillName" placeholder="nombreDeSkill (a-z, _ -)">
+              <input type="text" id="skillDesc" placeholder="Descripcion corta de que hace">
+            </div>
+            <textarea class="code-editor" id="codeEditor" placeholder="// Pega aqui el codigo JavaScript que Hanna te genere
+// Variables disponibles: bot, goals, Vec3, mcData, sleep, log, skills
+
+// Ejemplo:
+const target = bot.players['HumaHuman']?.entity
+if (!target) throw new Error('No te veo')
+await bot.pathfinder.goto(new goals.GoalNear(target.position.x, target.position.y, target.position.z, 2))
+return 'Llegue contigo'"></textarea>
+            <div class="editor-toolbar">
+              <button class="primary" id="btnExec" onclick="execCode()">▶ Ejecutar</button>
+              <button class="danger" id="btnStop" onclick="stopExec()">■ Stop</button>
+              <button class="success" onclick="saveSkill()">Guardar como skill</button>
+              <button onclick="clearEditor()">Limpiar</button>
+              <span style="margin-left: auto; font-size: 12px; color: #8a96a3;" id="execInfo"></span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="panel" id="panel-log">
+      <div class="card">
+        <h2>Log en vivo (todo lo que pasa)</h2>
+        <div class="log" id="log"></div>
+      </div>
+    </div>
+
+  </div>
+
+  <div class="footer">PepeAlbondiga v2.0 - Bot de Minecraft con cerebro inyectable</div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+let TOKEN = localStorage.getItem('botToken') || ''
+const logEl = document.getElementById('log')
+const statusDot = document.getElementById('statusDot')
+const statusText = document.getElementById('statusText')
+
+function showToast(msg, type) {
+  const t = document.getElementById('toast')
+  t.className = 'toast show ' + (type || '')
+  t.textContent = msg
+  setTimeout(() => t.classList.remove('show'), 3500)
+}
+
+function init() {
+  if (TOKEN === '') {
+    document.getElementById('tokenPrompt').style.display = 'block'
+  } else {
+    document.getElementById('mainContent').style.display = 'block'
+    connectWS()
+    reloadSkills()
+  }
+}
+
+function saveToken() {
+  const t = document.getElementById('tokenInput').value.trim()
+  if (t.length === 0) return showToast('Token vacio', 'error')
+  TOKEN = t
+  localStorage.setItem('botToken', t)
+  document.getElementById('tokenPrompt').style.display = 'none'
+  document.getElementById('mainContent').style.display = 'block'
+  connectWS()
+  reloadSkills()
+  showToast('Token guardado', 'success')
+}
+
+function switchTab(name) {
+  document.querySelectorAll('.tab').forEach(t => t.classList.toggle('active', t.dataset.tab === name))
+  document.querySelectorAll('.panel').forEach(p => p.classList.toggle('active', p.id === 'panel-' + name))
+}
+
+function addLog(text) {
+  const line = document.createElement('div')
+  line.className = 'log-line'
+  if (text.indexOf('[chat]') === 0) line.classList.add('chat')
+  else if (text.indexOf('[auth]') === 0 || text.indexOf('[setup]') === 0) line.classList.add('auth')
+  else if (text.indexOf('[error]') === 0 || text.indexOf('[kicked]') === 0) line.classList.add('error')
+  else if (text.indexOf('[exec]') === 0) line.classList.add('exec')
+  else if (text.indexOf('[skill]') === 0) line.classList.add('skill')
+  else if (text.indexOf('[path]') === 0) line.classList.add('path')
+  line.textContent = text
+  logEl.appendChild(line)
+  logEl.scrollTop = logEl.scrollHeight
+  while (logEl.children.length > 300) logEl.removeChild(logEl.firstChild)
+}
+
+function updateState(s) {
+  if (s.execStatus && s.execStatus.running) {
+    statusDot.className = 'dot busy'
+    statusText.textContent = 'Ejecutando codigo (' + Math.round(s.execStatus.runningForMs / 1000) + 's)...'
+    document.getElementById('execStatus').textContent = 'En curso (' + Math.round(s.execStatus.runningForMs / 1000) + 's)'
+    document.getElementById('btnExec').disabled = true
+  } else {
+    statusDot.className = 'dot ' + (s.connected ? 'on' : 'off')
+    statusText.textContent = s.connected ? 'Conectado como ' + s.username : 'Esperando autenticacion'
+    document.getElementById('execStatus').textContent = 'Idle'
+    document.getElementById('btnExec').disabled = false
+  }
+
+  document.getElementById('pos').textContent = s.pos ? (s.pos.x + ', ' + s.pos.y + ', ' + s.pos.z) : '--'
+  document.getElementById('health').textContent = s.health !== null ? (Math.round(s.health) + ' / ' + Math.round(s.food)) : '--'
+
+  const playersEl = document.getElementById('players')
+  if (s.players && s.players.length > 0) {
+    playersEl.innerHTML = s.players.map(p => '<span>' + p + '</span>').join('')
+  } else {
+    playersEl.textContent = 'Ninguno cerca'
+  }
+}
+
+function connectWS() {
+  const proto = location.protocol === 'https:' ? 'wss:' : 'ws:'
+  const ws = new WebSocket(proto + '//' + location.host)
+  ws.onmessage = (ev) => {
+    const m = JSON.parse(ev.data)
+    if (m.type === 'log') addLog(m.payload)
+    else if (m.type === 'state') updateState(m.payload)
+  }
+  ws.onclose = () => {
+    statusText.textContent = 'Desconectado del panel'
+    statusDot.className = 'dot off'
+    setTimeout(connectWS, 3000)
+  }
+}
+
+async function api(path, opts) {
+  opts = opts || {}
+  opts.headers = Object.assign({
+    'Content-Type': 'application/json',
+    'X-Bot-Token': TOKEN
+  }, opts.headers || {})
+  const r = await fetch(path, opts)
+  if (r.status === 401) {
+    showToast('Token invalido', 'error')
+    localStorage.removeItem('botToken')
+    location.reload()
+    return null
+  }
+  return r.json()
+}
+
+async function quickCmd(c) {
+  const r = await api('/api/cmd', { method: 'POST', body: JSON.stringify({ cmd: c, args: [] }) })
+  if (!r) return
+  showToast(r.msg || (r.ok ? 'OK' : 'Error'), r.ok ? 'success' : 'error')
+}
+
+async function sayChat() {
+  const t = document.getElementById('chat').value.trim()
+  if (t === '') return
+  const r = await api('/api/cmd', { method: 'POST', body: JSON.stringify({ cmd: 'say', args: t.split(' ') }) })
+  if (!r) return
+  if (r.ok) document.getElementById('chat').value = ''
+  showToast(r.msg, r.ok ? 'success' : 'error')
+}
+
+async function reloadSkills() {
+  const r = await api('/api/skills')
+  if (!r) return
+  const list = document.getElementById('skillItems')
+  if (!r.ok || r.skills.length === 0) {
+    list.innerHTML = '<div style="padding: 16px; color: #8a96a3; font-size: 13px;">No hay skills</div>'
+    return
+  }
+  list.innerHTML = r.skills.map(s => {
+    const tagsHtml = s.tags && s.tags.length > 0 ? '<div class="skill-tags">' + s.tags.join(' · ') + '</div>' : ''
+    return '<div class="skill-item" onclick="loadSkill(\'' + s.name + '\')">' +
+           '<div class="skill-name">' + s.name + '</div>' +
+           '<div class="skill-desc">' + (s.description || '(sin descripcion)') + '</div>' +
+           tagsHtml +
+           '</div>'
+  }).join('')
+}
+
+async function loadSkill(name) {
+  const r = await api('/api/skills/' + encodeURIComponent(name))
+  if (!r || !r.ok) return showToast('No se pudo cargar', 'error')
+  document.getElementById('skillName').value = r.name
+  document.getElementById('skillDesc').value = r.description || ''
+  document.getElementById('codeEditor').value = r.code || ''
+  document.querySelectorAll('.skill-item').forEach(el => el.classList.remove('active'))
+  event.currentTarget.classList.add('active')
+  showToast('Skill cargada: ' + r.name, 'success')
+}
+
+async function execCode() {
+  const code = document.getElementById('codeEditor').value.trim()
+  if (code === '') return showToast('No hay codigo', 'error')
+  document.getElementById('execInfo').textContent = 'Ejecutando...'
+  const r = await api('/api/exec', { method: 'POST', body: JSON.stringify({ code: code }) })
+  if (!r) return
+  if (r.ok) {
+    const dur = r.durationMs ? ' (' + r.durationMs + 'ms)' : ''
+    document.getElementById('execInfo').textContent = 'OK' + dur
+    showToast('Ejecutado' + dur + (r.result !== undefined ? ': ' + JSON.stringify(r.result) : ''), 'success')
+  } else {
+    document.getElementById('execInfo').textContent = 'ERR'
+    showToast('Error: ' + r.error, 'error')
+  }
+}
+
+async function stopExec() {
+  const r = await api('/api/stop', { method: 'POST', body: '{}' })
+  if (!r) return
+  showToast(r.msg || 'Stop enviado', r.ok ? 'success' : 'error')
+}
+
+async function saveSkill() {
+  const name = document.getElementById('skillName').value.trim()
+  const desc = document.getElementById('skillDesc').value.trim()
+  const code = document.getElementById('codeEditor').value.trim()
+  if (name === '' || code === '') return showToast('Faltan nombre o codigo', 'error')
+  const r = await api('/api/skills', {
+    method: 'POST',
+    body: JSON.stringify({ name: name, code: code, description: desc, tags: [] })
+  })
+  if (!r) return
+  if (r.ok) {
+    showToast('Skill guardada: ' + r.name, 'success')
+    reloadSkills()
+  } else {
+    showToast('Error: ' + r.error, 'error')
+  }
+}
+
+function clearEditor() {
+  document.getElementById('skillName').value = ''
+  document.getElementById('skillDesc').value = ''
+  document.getElementById('codeEditor').value = ''
+  document.querySelectorAll('.skill-item').forEach(el => el.classList.remove('active'))
+}
+
+init()
+</script>
+</body>
+</html>
